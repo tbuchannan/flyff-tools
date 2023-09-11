@@ -7,7 +7,7 @@ export function ItemInput({ onChange, value }: InputProps) {
   return (
     <input
       className="border-0 focus:border-transparent w-8 text-center bg-black"
-      value={value}
+      value={parseInt(`${value}`)}
       onChange={(e) => {
         if (
           Number(e.currentTarget.value) >= 0 &&

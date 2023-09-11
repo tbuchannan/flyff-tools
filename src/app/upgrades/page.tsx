@@ -37,17 +37,40 @@ const ACTUAL_RATES = [
   0.0005029,
 ]
 
-const MINERALS_REQUIRED = {
-  '0': 10,
-  '1': 14,
-  '2': 20,
-  '3': 27,
-  '4': 38,
-  '5': 54,
-  '6': 75,
-  '7': 105,
-  '8': 148,
-  '9': 207,
+const ACTUAL_RATES_FWC = [
+  1, 1, 1, 0.6947398, 0.4124516, 0.1956528, 0.0912402, 0.0240328, 0.0061782, 0.0010058,
+]
+
+type UpgradeLevelType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+type UpgradeLevelMap<T> = { [LEVEL in UpgradeLevelType]: T }
+
+const MINERALS_REQUIRED: UpgradeLevelMap<number> = {
+  0: 10,
+  1: 14,
+  2: 20,
+  3: 27,
+  4: 38,
+  5: 54,
+  6: 75,
+  7: 105,
+  8: 148,
+  9: 207,
+}
+
+const initialState = {
+  mineralPrice: 0,
+  eronPrice: 0,
+  isFWC: false,
+  helmetUpgrade: 0,
+  chestUpgrade: 0,
+  glovesUpgrade: 0,
+  bootsUpgrade: 0,
+  helmetGoal: 0,
+  chestGoal: 0,
+  glovesGoal: 0,
+  bootsGoal: 0,
+  totalErons: 0,
+  totalMinerals: 0,
 }
 
 export default function Upgrades() {
@@ -62,6 +85,8 @@ export default function Upgrades() {
   const [chestGoal, setChestGoal] = useState(0)
   const [glovesGoal, setGlovesGoal] = useState(0)
   const [bootsGoal, setBootsGoal] = useState(0)
+  const [totalErons, setTotalErons] = useState(0)
+  const [totalMinerals, setTotalMinerals] = useState(0)
 
   const between = (number: number, min: number, max: number) => {
     return Math.min(Math.max(number, min), max)
@@ -148,8 +173,63 @@ export default function Upgrades() {
     }
   }
 
+  const simulate = (start: UpgradeLevelType, end: UpgradeLevelType, item: GearType) => {
+    if (start > end) return
+
+    let current = start
+    let tempEronTotal = 0
+    let tempMineralTotal = 0
+    const rates = isFWC ? ACTUAL_RATES_FWC : ACTUAL_RATES
+
+    while (current < end) {
+      let num = Math.random()
+      tempEronTotal += MINERALS_REQUIRED[current]
+      tempMineralTotal += MINERALS_REQUIRED[current]
+      if (num <= rates[current]) current++
+    }
+
+    setTotalErons((item) => item + tempEronTotal)
+    setTotalMinerals((item) => item + tempMineralTotal)
+
+    switch (item) {
+      case GearType.Helmet:
+        setHelmetUpgrade(current)
+        break
+      case GearType.Chest:
+        setChestUpgrade(current)
+        break
+      case GearType.Gloves:
+        setGlovesUpgrade(current)
+        break
+      case GearType.Boots:
+        setBootsUpgrade(current)
+        break
+    }
+  }
+
+  const reset = () => {
+    // setHelmetGoal(0)
+    setHelmetUpgrade(0)
+    // setChestGoal(0)
+    setChestUpgrade(0)
+    // setGlovesGoal(0)
+    setGlovesUpgrade(0)
+    // setBootsGoal(0)
+    setBootsUpgrade(0)
+
+    setTotalErons(0)
+    setTotalMinerals(0)
+  }
+
+  const calculate = () => {
+    simulate(helmetUpgrade as UpgradeLevelType, helmetGoal as UpgradeLevelType, GearType.Helmet)
+    simulate(chestUpgrade as UpgradeLevelType, chestGoal as UpgradeLevelType, GearType.Chest)
+    simulate(glovesUpgrade as UpgradeLevelType, glovesGoal as UpgradeLevelType, GearType.Gloves)
+    simulate(bootsUpgrade as UpgradeLevelType, bootsGoal as UpgradeLevelType, GearType.Boots)
+  }
+
   return (
-    <div className='flex flex-col h-screen gap-1 p-8'>
+    <div className='flex flex-col gap-1 p-8 w-[50rem] h-[50rem] m-auto'>
       <div className='flex gap-4 justify-center'>
         <div className='flex justify-items-stretch gap-4'>
           <div>Mineral Price:</div>
@@ -276,7 +356,32 @@ export default function Upgrades() {
         </div>
       </div>
       <div>
-        <button className='border'>Calculate</button>
+        <button className='border p-2 rounded-lg mr-2' onClick={calculate}>
+          Calculate
+        </button>
+        <button className='border p-2 rounded-lg' onClick={reset}>
+          reset
+        </button>
+        <div className='flex flex-col'>
+          <span>
+            Total Minerals:{' '}
+            {new Intl.NumberFormat('en-US', {
+              style: 'decimal',
+            }).format(totalMinerals)}
+          </span>
+          <span>
+            Total Erons:{' '}
+            {new Intl.NumberFormat('en-US', {
+              style: 'decimal',
+            }).format(totalErons)}
+          </span>
+          <span>
+            Penya:{' '}
+            {new Intl.NumberFormat('en-US', {
+              style: 'decimal',
+            }).format(totalErons * eronPrice + totalMinerals * mineralPrice)}
+          </span>
+        </div>
       </div>
       <div className='flex flex-col justify-center items-center mt-auto'>
         <div>UPGRADE RATES?</div>
