@@ -30,14 +30,15 @@ const OLD_RATES = {
   '9': 1.8,
 }
 
-const OLD_RATES_ARR = [0.9, 0.85, 0.8, 0.54, 0.405, 0.27, 0.18, 0.09, 0.045, 0.018]
+const LOW_SPRO_RATES_ARR = [0.9, 0.85, 0.8, 0.54, 0.405, 0.27, 0.18, 0.09, 0.045, 0.018]
+const LOW_SPRO_RATES_FWC_ARR = [1, 1, 1, 1, 0.81, 0.54, 0.36, 0.18, 0.09, 0.036]
 
-const ACTUAL_RATES = [
+const SPRO_RATES = [
   0.8888889, 0.8235294, 0.75, 0.3473699, 0.2062258, 0.0978264, 0.0456201, 0.0120164, 0.0030891,
   0.0005029,
 ]
 
-const ACTUAL_RATES_FWC = [
+const SPRO_RATES_FWC = [
   1, 1, 1, 0.6947398, 0.4124516, 0.1956528, 0.0912402, 0.0240328, 0.0061782, 0.0010058,
 ]
 
@@ -77,6 +78,7 @@ export default function Upgrades() {
   const [mineralPrice, setMineralPrice] = useState(0)
   const [eronPrice, setEronPrice] = useState(0)
   const [isFWC, setIsFWC] = useState(false)
+  const [lowSpro, setLowSpro] = useState(false)
   const [helmetUpgrade, setHelmetUpgrade] = useState(0)
   const [chestUpgrade, setChestUpgrade] = useState(0)
   const [glovesUpgrade, setGlovesUpgrade] = useState(0)
@@ -87,6 +89,7 @@ export default function Upgrades() {
   const [bootsGoal, setBootsGoal] = useState(0)
   const [totalErons, setTotalErons] = useState(0)
   const [totalMinerals, setTotalMinerals] = useState(0)
+  const [totalTries, setTotalTries] = useState(0)
 
   const between = (number: number, min: number, max: number) => {
     return Math.min(Math.max(number, min), max)
@@ -174,60 +177,74 @@ export default function Upgrades() {
   }
 
   const simulate = (start: UpgradeLevelType, end: UpgradeLevelType, item: GearType) => {
-    if (start > end) return
+    if (start >= end) return
 
-    let current = start
-    let tempEronTotal = 0
-    let tempMineralTotal = 0
-    const rates = isFWC ? ACTUAL_RATES_FWC : ACTUAL_RATES
+    let mineralCosts = []
+    let eronCosts = []
+    let totalTries = []
 
-    while (current < end) {
-      let num = Math.random()
-      tempEronTotal += MINERALS_REQUIRED[current]
-      tempMineralTotal += MINERALS_REQUIRED[current]
-      if (num <= rates[current]) current++
+    const rates = isFWC ? (lowSpro ? LOW_SPRO_RATES_FWC_ARR : SPRO_RATES_FWC) : SPRO_RATES
+
+    let current: UpgradeLevelType
+
+    for (let i = 0; i < 10000; i++) {
+      current = start
+      let tempEronTotal = 0
+      let tempMineralTotal = 0
+      let numberOfAttempts = 1
+
+      let tryTotal = 0
+      let tempRates = [...rates]
+
+      while (current < end) {
+        let num = Math.random()
+        tryTotal++
+        tempEronTotal += MINERALS_REQUIRED[current]
+        tempMineralTotal += MINERALS_REQUIRED[current]
+        if (num <= tempRates[current]) {
+          current++
+        } else if (lowSpro) {
+          current += current > 0 ? -1 : 0
+        } else {
+          numberOfAttempts++
+          tempRates[current] = rates[current] * numberOfAttempts
+        }
+      }
+      totalTries.push(tryTotal)
+      mineralCosts.push(tempMineralTotal)
+      eronCosts.push(tempEronTotal)
     }
 
-    setTotalErons((item) => item + tempEronTotal)
-    setTotalMinerals((item) => item + tempMineralTotal)
+    let triesSum = totalTries.reduce((acc, curr) => acc + curr, 0)
+    let mineralSum = mineralCosts.reduce((acc, curr) => acc + curr, 0)
+    let eronSum = eronCosts.reduce((acc, curr) => acc + curr, 0)
 
-    switch (item) {
-      case GearType.Helmet:
-        setHelmetUpgrade(current)
-        break
-      case GearType.Chest:
-        setChestUpgrade(current)
-        break
-      case GearType.Gloves:
-        setGlovesUpgrade(current)
-        break
-      case GearType.Boots:
-        setBootsUpgrade(current)
-        break
-    }
+    setTotalErons((item) => item + Math.floor(eronSum / eronCosts.length))
+    setTotalMinerals((item) => item + Math.floor(mineralSum / mineralCosts.length))
+    setTotalTries((item) => item + Math.floor(triesSum / totalTries.length))
   }
 
   const reset = () => {
-    // setHelmetGoal(0)
-    setHelmetUpgrade(0)
-    // setChestGoal(0)
-    setChestUpgrade(0)
-    // setGlovesGoal(0)
-    setGlovesUpgrade(0)
-    // setBootsGoal(0)
-    setBootsUpgrade(0)
-
     setTotalErons(0)
     setTotalMinerals(0)
+    setTotalTries(0)
   }
 
   const calculate = () => {
+    reset()
     simulate(helmetUpgrade as UpgradeLevelType, helmetGoal as UpgradeLevelType, GearType.Helmet)
     simulate(chestUpgrade as UpgradeLevelType, chestGoal as UpgradeLevelType, GearType.Chest)
     simulate(glovesUpgrade as UpgradeLevelType, glovesGoal as UpgradeLevelType, GearType.Gloves)
     simulate(bootsUpgrade as UpgradeLevelType, bootsGoal as UpgradeLevelType, GearType.Boots)
   }
 
+  const rates = isFWC
+    ? lowSpro
+      ? LOW_SPRO_RATES_FWC_ARR
+      : SPRO_RATES_FWC
+    : lowSpro
+    ? LOW_SPRO_RATES_ARR
+    : SPRO_RATES
   return (
     <div className='flex flex-col gap-1 p-8 w-[50rem] h-[50rem] m-auto'>
       <div className='flex gap-4 justify-center'>
@@ -260,6 +277,15 @@ export default function Upgrades() {
             checked={isFWC}
           />
         </div>
+        <div className='flex justify-items-stretch gap-4'>
+          <div>Low Spros?:</div>
+          <input
+            className='border-0 focus:border-transparent text-black '
+            onChange={() => setLowSpro(!lowSpro)}
+            type='checkbox'
+            checked={lowSpro}
+          />
+        </div>
       </div>
 
       <div className='flex gap-24 my-16 justify-center'>
@@ -277,7 +303,7 @@ export default function Upgrades() {
             }}
           />
           <div className='flex gap-4'>
-            <span>Current:</span>
+            <span>Start:</span>
             <ItemInput value={helmetUpgrade} onChange={setHelmetUpgrade} />
           </div>
           <div className='flex justify-between'>
@@ -300,7 +326,7 @@ export default function Upgrades() {
             height={32}
           />
           <div className='flex justify-between'>
-            <span>Current:</span>
+            <span>Start:</span>
             <ItemInput value={chestUpgrade} onChange={setChestUpgrade} />
           </div>
 
@@ -323,7 +349,7 @@ export default function Upgrades() {
             height={32}
           />
           <div className='flex justify-between'>
-            <span>Current:</span>
+            <span>Start:</span>
             <ItemInput value={glovesUpgrade} onChange={setGlovesUpgrade} />
           </div>
           <div className='flex justify-between'>
@@ -346,7 +372,7 @@ export default function Upgrades() {
             height={32}
           />
           <div className='flex justify-between'>
-            <span>Current:</span>
+            <span>Start:</span>
             <ItemInput value={bootsUpgrade} onChange={setBootsUpgrade} />
           </div>
           <div className='flex justify-between'>
@@ -381,17 +407,20 @@ export default function Upgrades() {
               style: 'decimal',
             }).format(totalErons * eronPrice + totalMinerals * mineralPrice)}
           </span>
+          <span>
+            Total Tries:{' '}
+            {new Intl.NumberFormat('en-US', {
+              style: 'decimal',
+            }).format(totalTries)}
+          </span>
         </div>
       </div>
       <div className='flex flex-col justify-center items-center mt-auto'>
         <div>UPGRADE RATES?</div>
-        {ACTUAL_RATES.map((rate, index) => (
+        {rates.map((rate, index) => (
           <div key={`${rate}-${index}`} className='flex justify-between w-36'>
             <span>(+{index + 1})</span>
-            <span>
-              {isFWC ? parseFloat(between(rate * 200, 0, 100).toFixed(8)) : (rate * 100).toFixed(4)}
-              %
-            </span>
+            <span>{(rate * 100).toFixed(4)}%</span>
           </div>
         ))}
       </div>
