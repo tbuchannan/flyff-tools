@@ -38,9 +38,7 @@ const SPRO_RATES = [
   0.0005029,
 ]
 
-const SPRO_RATES_FWC = [
-  1, 1, 1, 0.6947398, 0.4124516, 0.1956528, 0.0912402, 0.0240328, 0.0061782, 0.0010058,
-]
+const SPRO_RATES_FWC = [1, 1, 1, 1, 0.765432, 0.34737, 0.166328, 0.04562, 0.012016, 0.001988]
 
 type UpgradeLevelType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 type UpgradeLevelMap<T> = { [LEVEL in UpgradeLevelType]: T }
@@ -128,7 +126,6 @@ export default function Upgrades() {
   }
 
   const chanceFromReadablePercentage = (percentage: number) => {
-    console.log('asd')
     let upperChance = percentage
     let lowerChance = 0.0
     let middleChance = 0.0
