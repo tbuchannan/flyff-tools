@@ -1,7 +1,8 @@
 'use client'
 import { ItemInput } from '@/components/item-input'
 import Image from 'next/image'
-import { FormEvent, useState } from 'react'
+import { FormEvent, useReducer } from 'react'
+import { initialState, upgradeReducer } from './reducer'
 
 const MAX_PRICE = 1000000
 
@@ -56,38 +57,8 @@ const MINERALS_REQUIRED: UpgradeLevelMap<number> = {
   9: 207,
 }
 
-const initialState = {
-  mineralPrice: 0,
-  eronPrice: 0,
-  isFWC: false,
-  helmetUpgrade: 0,
-  chestUpgrade: 0,
-  glovesUpgrade: 0,
-  bootsUpgrade: 0,
-  helmetGoal: 0,
-  chestGoal: 0,
-  glovesGoal: 0,
-  bootsGoal: 0,
-  totalErons: 0,
-  totalMinerals: 0,
-}
-
 export default function Upgrades() {
-  const [mineralPrice, setMineralPrice] = useState(0)
-  const [eronPrice, setEronPrice] = useState(0)
-  const [isFWC, setIsFWC] = useState(false)
-  const [lowSpro, setLowSpro] = useState(false)
-  const [helmetUpgrade, setHelmetUpgrade] = useState(0)
-  const [chestUpgrade, setChestUpgrade] = useState(0)
-  const [glovesUpgrade, setGlovesUpgrade] = useState(0)
-  const [bootsUpgrade, setBootsUpgrade] = useState(0)
-  const [helmetGoal, setHelmetGoal] = useState(0)
-  const [chestGoal, setChestGoal] = useState(0)
-  const [glovesGoal, setGlovesGoal] = useState(0)
-  const [bootsGoal, setBootsGoal] = useState(0)
-  const [totalErons, setTotalErons] = useState(0)
-  const [totalMinerals, setTotalMinerals] = useState(0)
-  const [totalTries, setTotalTries] = useState(0)
+  const [state, dispatch] = useReducer(upgradeReducer, initialState)
 
   const between = (number: number, min: number, max: number) => {
     return Math.min(Math.max(number, min), max)
@@ -99,10 +70,10 @@ export default function Upgrades() {
     if (flooredNum < MAX_PRICE) {
       switch (material) {
         case MaterialType.Eron:
-          setEronPrice(flooredNum)
+          dispatch({ type: 'SET_ERON_PRICE', value: flooredNum })
           break
         case MaterialType.Mineral:
-          setMineralPrice(flooredNum)
+          dispatch({ type: 'SET_MINERAL_PRICE', value: flooredNum })
           break
       }
     }
@@ -153,20 +124,24 @@ export default function Upgrades() {
     let newUpgrade
     switch (gear) {
       case GearType.Helmet:
-        newUpgrade = helmetUpgrade + mod
-        if (newUpgrade >= 0 && newUpgrade <= 10) setHelmetUpgrade(newUpgrade)
+        newUpgrade = state.helmetUpgrade + mod
+        if (newUpgrade >= 0 && newUpgrade <= 10)
+          dispatch({ type: 'SET_HELMET_UPGRADE', value: newUpgrade })
         break
       case GearType.Chest:
-        newUpgrade = chestUpgrade + mod
-        if (newUpgrade >= 0 && newUpgrade <= 10) setChestUpgrade(newUpgrade)
+        newUpgrade = state.chestUpgrade + mod
+        if (newUpgrade >= 0 && newUpgrade <= 10)
+          dispatch({ type: 'SET_CHEST_UPGRADE', value: newUpgrade })
         break
       case GearType.Gloves:
-        newUpgrade = glovesUpgrade + mod
-        if (newUpgrade >= 0 && newUpgrade <= 10) setGlovesUpgrade(newUpgrade)
+        newUpgrade = state.glovesUpgrade + mod
+        if (newUpgrade >= 0 && newUpgrade <= 10)
+          dispatch({ type: 'SET_GLOVES_UPGRADE', value: newUpgrade })
         break
       case GearType.Boots:
-        newUpgrade = bootsUpgrade + mod
-        if (newUpgrade >= 0 && newUpgrade <= 10) setBootsUpgrade(newUpgrade)
+        newUpgrade = state.bootsUpgrade + mod
+        if (newUpgrade >= 0 && newUpgrade <= 10)
+          dispatch({ type: 'SET_BOOTS_UPGRADE', value: newUpgrade })
         break
       default:
         break
@@ -180,11 +155,15 @@ export default function Upgrades() {
     let eronCosts = []
     let totalTries = []
 
-    const rates = isFWC ? (lowSpro ? LOW_SPRO_RATES_FWC_ARR : SPRO_RATES_FWC) : SPRO_RATES
+    const rates = state.isFWC
+      ? state.lowSpro
+        ? LOW_SPRO_RATES_FWC_ARR
+        : SPRO_RATES_FWC
+      : SPRO_RATES
 
     let current: UpgradeLevelType
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 1000; i++) {
       current = start
       let tempEronTotal = 0
       let tempMineralTotal = 0
@@ -200,7 +179,7 @@ export default function Upgrades() {
         tempMineralTotal += MINERALS_REQUIRED[current]
         if (num <= tempRates[current]) {
           current++
-        } else if (lowSpro) {
+        } else if (state.lowSpro) {
           current += current > 0 ? -1 : 0
         } else {
           numberOfAttempts++
@@ -216,30 +195,44 @@ export default function Upgrades() {
     let mineralSum = mineralCosts.reduce((acc, curr) => acc + curr, 0)
     let eronSum = eronCosts.reduce((acc, curr) => acc + curr, 0)
 
-    setTotalErons((item) => item + Math.floor(eronSum / eronCosts.length))
-    setTotalMinerals((item) => item + Math.floor(mineralSum / mineralCosts.length))
-    setTotalTries((item) => item + Math.floor(triesSum / totalTries.length))
+    dispatch({ type: 'SET_TOTAL_ERONS', value: Math.floor(eronSum / eronCosts.length) })
+    dispatch({ type: 'SET_TOTAL_MINERALS', value: Math.floor(mineralSum / mineralCosts.length) })
+    dispatch({ type: 'SET_TOTAL_TRIES', value: Math.floor(triesSum / totalTries.length) })
   }
 
   const reset = () => {
-    setTotalErons(0)
-    setTotalMinerals(0)
-    setTotalTries(0)
+    dispatch({ type: 'RESET_TOTALS' })
   }
 
   const calculate = () => {
     reset()
-    simulate(helmetUpgrade as UpgradeLevelType, helmetGoal as UpgradeLevelType, GearType.Helmet)
-    simulate(chestUpgrade as UpgradeLevelType, chestGoal as UpgradeLevelType, GearType.Chest)
-    simulate(glovesUpgrade as UpgradeLevelType, glovesGoal as UpgradeLevelType, GearType.Gloves)
-    simulate(bootsUpgrade as UpgradeLevelType, bootsGoal as UpgradeLevelType, GearType.Boots)
+    simulate(
+      state.helmetUpgrade as UpgradeLevelType,
+      state.helmetGoal as UpgradeLevelType,
+      GearType.Helmet,
+    )
+    simulate(
+      state.chestUpgrade as UpgradeLevelType,
+      state.chestGoal as UpgradeLevelType,
+      GearType.Chest,
+    )
+    simulate(
+      state.glovesUpgrade as UpgradeLevelType,
+      state.glovesGoal as UpgradeLevelType,
+      GearType.Gloves,
+    )
+    simulate(
+      state.bootsUpgrade as UpgradeLevelType,
+      state.bootsGoal as UpgradeLevelType,
+      GearType.Boots,
+    )
   }
 
-  const rates = isFWC
-    ? lowSpro
+  const rates = state.isFWC
+    ? state.lowSpro
       ? LOW_SPRO_RATES_FWC_ARR
       : SPRO_RATES_FWC
-    : lowSpro
+    : state.lowSpro
     ? LOW_SPRO_RATES_ARR
     : SPRO_RATES
   return (
@@ -251,7 +244,7 @@ export default function Upgrades() {
             className='border-0 focus:border-transparent text-black w-24'
             onChange={(e) => handlePriceChange(e, MaterialType.Mineral)}
             type='number'
-            value={mineralPrice}
+            value={state.mineralPrice}
           />
         </div>
         <div className='flex justify-items-stretch gap-4'>
@@ -261,7 +254,7 @@ export default function Upgrades() {
               className='border-0 focus:border-transparent text-black w-24'
               onChange={(e) => handlePriceChange(e, MaterialType.Eron)}
               type='number'
-              value={eronPrice}
+              value={state.eronPrice}
             />
           </div>
         </div>
@@ -269,18 +262,18 @@ export default function Upgrades() {
           <div>FWC?:</div>
           <input
             className='border-0 focus:border-transparent text-black '
-            onChange={() => setIsFWC(!isFWC)}
+            onChange={() => dispatch({ type: 'SET_IS_FWC', value: !state.isFWC })}
             type='checkbox'
-            checked={isFWC}
+            checked={state.isFWC}
           />
         </div>
         <div className='flex justify-items-stretch gap-4'>
           <div>Low Spros?:</div>
           <input
             className='border-0 focus:border-transparent text-black '
-            onChange={() => setLowSpro(!lowSpro)}
+            onChange={() => dispatch({ type: 'SET_LOW_SPRO', value: !state.lowSpro })}
             type='checkbox'
-            checked={lowSpro}
+            checked={state.lowSpro}
           />
         </div>
       </div>
@@ -301,11 +294,17 @@ export default function Upgrades() {
           />
           <div className='flex gap-4'>
             <span>Start:</span>
-            <ItemInput value={helmetUpgrade} onChange={setHelmetUpgrade} />
+            <ItemInput
+              value={state.helmetUpgrade}
+              onChange={(num) => dispatch({ type: 'SET_HELMET_UPGRADE', value: num })}
+            />
           </div>
           <div className='flex justify-between'>
             <span>Goal:</span>
-            <ItemInput value={helmetGoal} onChange={setHelmetGoal} />
+            <ItemInput
+              value={state.helmetGoal}
+              onChange={(num) => dispatch({ type: 'SET_HELMET_GOAL', value: num })}
+            />
           </div>
         </div>
 
@@ -324,12 +323,18 @@ export default function Upgrades() {
           />
           <div className='flex justify-between'>
             <span>Start:</span>
-            <ItemInput value={chestUpgrade} onChange={setChestUpgrade} />
+            <ItemInput
+              value={state.chestUpgrade}
+              onChange={(num) => dispatch({ type: 'SET_CHEST_UPGRADE', value: num })}
+            />
           </div>
 
           <div className='flex justify-between'>
             <span>Goal:</span>
-            <ItemInput value={chestGoal} onChange={setChestGoal} />
+            <ItemInput
+              value={state.chestGoal}
+              onChange={(num) => dispatch({ type: 'SET_CHEST_GOAL', value: num })}
+            />
           </div>
         </div>
         <div className='select-none'>
@@ -347,11 +352,17 @@ export default function Upgrades() {
           />
           <div className='flex justify-between'>
             <span>Start:</span>
-            <ItemInput value={glovesUpgrade} onChange={setGlovesUpgrade} />
+            <ItemInput
+              value={state.glovesUpgrade}
+              onChange={(num) => dispatch({ type: 'SET_GLOVES_UPGRADE', value: num })}
+            />
           </div>
           <div className='flex justify-between'>
             <span>Goal:</span>
-            <ItemInput value={glovesGoal} onChange={setGlovesGoal} />
+            <ItemInput
+              value={state.glovesGoal}
+              onChange={(num) => dispatch({ type: 'SET_GLOVES_GOAL', value: num })}
+            />
           </div>
         </div>
 
@@ -370,11 +381,17 @@ export default function Upgrades() {
           />
           <div className='flex justify-between'>
             <span>Start:</span>
-            <ItemInput value={bootsUpgrade} onChange={setBootsUpgrade} />
+            <ItemInput
+              value={state.bootsUpgrade}
+              onChange={(num) => dispatch({ type: 'SET_BOOTS_UPGRADE', value: num })}
+            />
           </div>
           <div className='flex justify-between'>
             <span>Goal:</span>
-            <ItemInput value={bootsGoal} onChange={setBootsGoal} />
+            <ItemInput
+              value={state.bootsGoal}
+              onChange={(num) => dispatch({ type: 'SET_BOOTS_GOAL', value: num })}
+            />
           </div>
         </div>
       </div>
@@ -390,25 +407,27 @@ export default function Upgrades() {
             Total Minerals:{' '}
             {new Intl.NumberFormat('en-US', {
               style: 'decimal',
-            }).format(totalMinerals)}
+            }).format(state.totalMinerals)}
           </span>
           <span>
             Total Erons:{' '}
             {new Intl.NumberFormat('en-US', {
               style: 'decimal',
-            }).format(totalErons)}
+            }).format(state.totalErons)}
           </span>
           <span>
             Penya:{' '}
             {new Intl.NumberFormat('en-US', {
               style: 'decimal',
-            }).format(totalErons * eronPrice + totalMinerals * mineralPrice)}
+            }).format(
+              state.totalErons * state.eronPrice + state.totalMinerals * state.mineralPrice,
+            )}
           </span>
           <span>
             Total Tries:{' '}
             {new Intl.NumberFormat('en-US', {
               style: 'decimal',
-            }).format(totalTries)}
+            }).format(state.totalTries)}
           </span>
         </div>
       </div>
