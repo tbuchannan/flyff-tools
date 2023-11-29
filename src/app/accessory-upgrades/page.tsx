@@ -2,18 +2,47 @@
 import { ItemInput } from '@/components/item-input'
 import Image from 'next/image'
 import { FormEvent, useReducer } from 'react'
-
-import { UpgradeRates } from '../components'
-import {
-  LOW_SPRO_RATES_ARR,
-  LOW_SPRO_RATES_FWC_ARR,
-  MAX_PRICE,
-  MAX_SIMULATIONS,
-  SPRO_RATES,
-  SPRO_RATES_FWC,
-} from '../constants'
 import { initialState, upgradeReducer } from './reducer'
-import { MaterialType, GearType, UpgradeLevelMap, UpgradeLevelType } from './types'
+
+const MAX_PRICE = 1000000
+
+enum MaterialType {
+  Eron,
+  Mineral,
+}
+
+enum GearType {
+  Helmet,
+  Chest,
+  Gloves,
+  Boots,
+}
+
+const OLD_RATES = {
+  '0': 90,
+  '1': 85,
+  '2': 80,
+  '3': 54,
+  '4': 40.5,
+  '5': 27,
+  '6': 18,
+  '7': 9,
+  '8': 4.5,
+  '9': 1.8,
+}
+
+const LOW_SPRO_RATES_ARR = [0.9, 0.85, 0.8, 0.54, 0.405, 0.27, 0.18, 0.09, 0.045, 0.018]
+const LOW_SPRO_RATES_FWC_ARR = [1, 1, 1, 1, 0.81, 0.54, 0.36, 0.18, 0.09, 0.036]
+
+const SPRO_RATES = [
+  0.8888889, 0.8235294, 0.75, 0.3473699, 0.2062258, 0.0978264, 0.0456201, 0.0120164, 0.0030891,
+  0.0005029,
+]
+
+const SPRO_RATES_FWC = [1, 1, 1, 1, 0.765432, 0.34737, 0.166328, 0.04562, 0.012016, 0.001988]
+
+type UpgradeLevelType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+type UpgradeLevelMap<T> = { [LEVEL in UpgradeLevelType]: T }
 
 const MINERALS_REQUIRED: UpgradeLevelMap<number> = {
   0: 10,
@@ -31,13 +60,9 @@ const MINERALS_REQUIRED: UpgradeLevelMap<number> = {
 export default function Upgrades() {
   const [state, dispatch] = useReducer(upgradeReducer, initialState)
 
-  const rates = state.isFWC
-    ? state.lowSpro
-      ? LOW_SPRO_RATES_FWC_ARR
-      : SPRO_RATES_FWC
-    : state.lowSpro
-    ? LOW_SPRO_RATES_ARR
-    : SPRO_RATES
+  const between = (number: number, min: number, max: number) => {
+    return Math.min(Math.max(number, min), max)
+  }
 
   const handlePriceChange = (e: FormEvent<HTMLInputElement>, material: MaterialType) => {
     let flooredNum = Math.floor(Number(e.currentTarget.value)) ?? 0
@@ -52,6 +77,47 @@ export default function Upgrades() {
           break
       }
     }
+  }
+
+  // https://gaming.stackexchange.com/a/290788
+  const percentageFromChance = (chance: number) => {
+    let pProcOnN = 0.0
+    let pProcByN = 0.0
+    let sumNpProcOnN = 0.0
+
+    let maxFails = Number(Math.ceil(1.0 / chance))
+
+    for (let i = 1; i < maxFails + 1; i++) {
+      pProcOnN = Math.min(1.0, i * chance) * (1.0 - pProcByN)
+      pProcByN += pProcOnN
+      sumNpProcOnN += i * pProcOnN
+    }
+
+    return 1.0 / sumNpProcOnN
+  }
+
+  const chanceFromReadablePercentage = (percentage: number) => {
+    let upperChance = percentage
+    let lowerChance = 0.0
+    let middleChance = 0.0
+    let maxChance = 1.0
+
+    while (true) {
+      middleChance = (upperChance + lowerChance) / 2.0
+      let tempPercentage = percentageFromChance(middleChance)
+
+      if (Math.abs(tempPercentage - maxChance) <= 0) break
+
+      if (tempPercentage > percentage) {
+        upperChance = middleChance
+      } else {
+        lowerChance = middleChance
+      }
+
+      maxChance = tempPercentage
+    }
+
+    return middleChance
   }
 
   const changeUpgrade = (gear: GearType, mod: number) => {
@@ -89,9 +155,15 @@ export default function Upgrades() {
     let eronCosts = []
     let totalTries = []
 
+    const rates = state.isFWC
+      ? state.lowSpro
+        ? LOW_SPRO_RATES_FWC_ARR
+        : SPRO_RATES_FWC
+      : SPRO_RATES
+
     let current: UpgradeLevelType
 
-    for (let i = 0; i < MAX_SIMULATIONS; i++) {
+    for (let i = 0; i < 100000; i++) {
       current = start
       let tempEronTotal = 0
       let tempMineralTotal = 0
@@ -163,6 +235,14 @@ export default function Upgrades() {
     )
   }
 
+  const rates = state.isFWC
+    ? state.lowSpro
+      ? LOW_SPRO_RATES_FWC_ARR
+      : SPRO_RATES_FWC
+    : state.lowSpro
+    ? LOW_SPRO_RATES_ARR
+    : SPRO_RATES
+
   return (
     <div className='flex flex-col gap-1 p-8 w-[50rem] h-[50rem] m-auto'>
       <div className='flex gap-4 justify-center'>
@@ -186,23 +266,22 @@ export default function Upgrades() {
             />
           </div>
         </div>
-        <div className='flex justify-items-stretch gap-4'>
+        {/* <div className='flex justify-items-stretch gap-4'>
           <div>FWC?:</div>
           <input
-            checked={state.isFWC}
             className='border-0 focus:border-transparent text-black '
-            disabled
             onChange={() => dispatch({ type: 'SET_IS_FWC', value: !state.isFWC })}
             type='checkbox'
+            checked={state.isFWC}
           />
-        </div>
+        </div> */}
         <div className='flex justify-items-stretch gap-4'>
           <div>Low Spros?:</div>
           <input
-            checked={state.lowSpro}
             className='border-0 focus:border-transparent text-black '
             onChange={() => dispatch({ type: 'SET_LOW_SPRO', value: !state.lowSpro })}
             type='checkbox'
+            checked={state.lowSpro}
           />
         </div>
       </div>
@@ -212,7 +291,7 @@ export default function Upgrades() {
           <Image
             alt='helmet'
             className='ml-4 cursor-pointer'
-            src='/rm-helm.png'
+            src='/helmet.png'
             width={32}
             height={32}
             onClick={() => changeUpgrade(GearType.Helmet, 1)}
@@ -246,7 +325,7 @@ export default function Upgrades() {
               e.preventDefault()
               return changeUpgrade(GearType.Chest, -1)
             }}
-            src='/rm-chest.png'
+            src='/chest.png'
             width={32}
             height={32}
           />
@@ -275,7 +354,7 @@ export default function Upgrades() {
               e.preventDefault()
               return changeUpgrade(GearType.Gloves, -1)
             }}
-            src='/rm-hands.png'
+            src='/gloves.png'
             width={32}
             height={32}
           />
@@ -299,7 +378,7 @@ export default function Upgrades() {
           <Image
             alt='boots'
             className='ml-4 cursor-pointer'
-            src='/rm-boots.png'
+            src='/boots.png'
             onClick={() => changeUpgrade(GearType.Boots, 1)}
             onContextMenu={(e) => {
               e.preventDefault()
@@ -360,7 +439,15 @@ export default function Upgrades() {
           </span>
         </div>
       </div>
-      <UpgradeRates rates={rates} />
+      <div className='flex flex-col justify-center items-center mt-auto'>
+        <div>UPGRADE RATES?</div>
+        {rates.map((rate, index) => (
+          <div key={`${rate}-${index}`} className='flex justify-between w-36'>
+            <span>(+{index + 1})</span>
+            <span>{(rate * 100).toFixed(4)}%</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
