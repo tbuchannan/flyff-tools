@@ -81,11 +81,11 @@ export function upgradeReducer(state: State, action: Action) {
     case 'SET_BOOTS_GOAL':
       return { ...state, bootsGoal: action.value }
     case 'SET_TOTAL_ERONS':
-      return { ...state, totalErons: action.value }
+      return { ...state, totalErons: state.totalErons + action.value }
     case 'SET_TOTAL_MINERALS':
-      return { ...state, totalMinerals: action.value }
+      return { ...state, totalMinerals: state.totalMinerals + action.value }
     case 'SET_TOTAL_TRIES':
-      return { ...state, totalTries: action.value }
+      return { ...state, totalTries: state.totalTries + action.value }
     case 'RESET_TOTALS':
       return { ...state, totalTries: 0, totalMinerals: 0, totalErons: 0 }
     default:
