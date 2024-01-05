@@ -11,6 +11,7 @@ import {
   MAX_SIMULATIONS,
   SPRO_RATES,
   SPRO_RATES_FWC,
+  UPGRADE_COSTS,
 } from '../constants'
 import { initialState, upgradeReducer } from './reducer'
 import { MaterialType, GearType, UpgradeLevelMap, UpgradeLevelType } from './types'
@@ -88,6 +89,7 @@ export default function Upgrades() {
     let mineralCosts = []
     let eronCosts = []
     let totalTries = []
+    let upgradeCosts = []
 
     let current: UpgradeLevelType
 
@@ -96,6 +98,7 @@ export default function Upgrades() {
       let tempEronTotal = 0
       let tempMineralTotal = 0
       let numberOfAttempts = 1
+      let upgradeCostTotal = 0
 
       let tryTotal = 0
       let tempRates = [...rates]
@@ -105,6 +108,7 @@ export default function Upgrades() {
         tryTotal++
         tempEronTotal += MINERALS_REQUIRED[current]
         tempMineralTotal += MINERALS_REQUIRED[current]
+        upgradeCostTotal += UPGRADE_COSTS[current]
         if (num <= tempRates[current]) {
           current++
         } else if (state.lowSpro) {
@@ -117,11 +121,13 @@ export default function Upgrades() {
       totalTries.push(tryTotal)
       mineralCosts.push(tempMineralTotal)
       eronCosts.push(tempEronTotal)
+      upgradeCosts.push(upgradeCostTotal)
     }
 
     let triesSum = totalTries.reduce((acc, curr) => acc + curr, 0)
     let mineralSum = mineralCosts.reduce((acc, curr) => acc + curr, 0)
     let eronSum = eronCosts.reduce((acc, curr) => acc + curr, 0)
+    let upgradeSum = upgradeCosts.reduce((acc, curr) => acc + curr, 0)
 
     dispatch({
       type: 'SET_TOTAL_ERONS',
@@ -134,6 +140,10 @@ export default function Upgrades() {
     dispatch({
       type: 'SET_TOTAL_TRIES',
       value: Math.floor(triesSum / totalTries.length),
+    })
+    dispatch({
+      type: 'SET_RAW_PENYA',
+      value: Math.floor(upgradeSum / upgradeCosts.length),
     })
   }
 
@@ -345,11 +355,23 @@ export default function Upgrades() {
             }).format(state.totalErons)}
           </span>
           <span>
-            Penya:{' '}
+            Mats + Upgrade Cost:{' '}
             {new Intl.NumberFormat('en-US', {
               style: 'decimal',
             }).format(
-              state.totalErons * state.eronPrice + state.totalMinerals * state.mineralPrice,
+              state.totalErons * state.eronPrice +
+                state.totalMinerals * state.mineralPrice +
+                state.rawPenya,
+            )}
+          </span>
+          <span>
+            Upgrade Costs:{' '}
+            {new Intl.NumberFormat('en-US', {
+              style: 'decimal',
+            }).format(
+              state.totalErons * state.eronPrice +
+                state.totalMinerals * state.mineralPrice +
+                state.rawPenya,
             )}
           </span>
           <span>
