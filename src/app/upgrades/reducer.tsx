@@ -14,6 +14,7 @@ interface State {
   totalErons: number
   totalMinerals: number
   totalTries: number
+  rawPenya: number
 }
 
 type Action =
@@ -32,6 +33,7 @@ type Action =
   | { type: 'SET_TOTAL_ERONS'; value: number }
   | { type: 'SET_TOTAL_MINERALS'; value: number }
   | { type: 'SET_TOTAL_TRIES'; value: number }
+  | { type: 'SET_RAW_PENYA'; value: number }
   | { type: 'RESET_TOTALS' }
 
 // Define the initial state
@@ -51,6 +53,7 @@ export const initialState = {
   totalErons: 0,
   totalMinerals: 0,
   totalTries: 0,
+  rawPenya: 0,
 }
 
 // Define the reducer function
@@ -86,8 +89,10 @@ export function upgradeReducer(state: State, action: Action) {
       return { ...state, totalMinerals: state.totalMinerals + action.value }
     case 'SET_TOTAL_TRIES':
       return { ...state, totalTries: state.totalTries + action.value }
+    case 'SET_RAW_PENYA':
+      return { ...state, rawPenya: state.rawPenya + action.value }
     case 'RESET_TOTALS':
-      return { ...state, totalTries: 0, totalMinerals: 0, totalErons: 0 }
+      return { ...state, totalTries: 0, totalMinerals: 0, totalErons: 0, rawPenya: 0 }
     default:
       return state
   }
