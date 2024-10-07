@@ -200,8 +200,7 @@ export default function Upgrades() {
           <div>FWC?:</div>
           <input
             checked={state.isFWC}
-            className='border-0 focus:border-transparent text-black '
-            disabled
+            className='border-0 focus:border-transparent text-black'
             onChange={() => dispatch({ type: 'SET_IS_FWC', value: !state.isFWC })}
             type='checkbox'
           />
